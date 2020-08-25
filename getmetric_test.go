@@ -14,8 +14,8 @@ func init() {
 }
 
 func TestQueue(t *testing.T) {
-	mon, _ := NewMonitoring("eu", 1)
-	mon.sendPort = 9500 // debug
+	mon, _ := NewMonitoring(1)
+	mon.sendPort = 9501 // debug
 
 	for x := 0; x < 10; x++ {
 		err := mon.PushMeasure("DEBUG_1", x)
@@ -35,7 +35,7 @@ func TestQueue(t *testing.T) {
 
 func TestPerSec(t *testing.T) {
 
-	mon, _ := NewMonitoring("eu", 5)
+	mon, _ := NewMonitoring(5)
 	// mon.sendPort = 9500 // debug
 
 	// first run

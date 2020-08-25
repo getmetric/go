@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -21,7 +20,6 @@ func init() {
 }
 
 type Monitoring struct {
-	Region string // eu, us, etc.
 
 	running       bool // TODO: atomic
 	maxQueueLen   int
@@ -49,16 +47,13 @@ type monItemV1 struct {
 	Values []MonValue `json:"values"`
 }
 
-func NewMonitoring(hostRegion string, sendPeriodSec int) (*Monitoring, error) {
-	if len(hostRegion) < 1 {
-		return nil, fmt.Errorf("region is not specified")
-	}
+func NewMonitoring(sendPeriodSec int) (*Monitoring, error) {
 
 	if sendPeriodSec < 1 {
 		return nil, fmt.Errorf("send per second must be greater than 0")
 	}
 
-	mon := Monitoring{Region: hostRegion}
+	mon := Monitoring{}
 	mon.maxQueueLen = 25000
 	mon.sendPeriodSec = sendPeriodSec
 	mon.batchMaxSize = 250
@@ -284,7 +279,7 @@ func (mon *Monitoring) sendBatch(batchQueue []interface{}) error {
 		}
 	}
 
-	urlBatch := "https://m" + strings.ToLower(mon.Region) + ".getmetric.co/api1/batch"
+	urlBatch := "https://node.getmetric.co/api1/batch"
 
 	if mon.sendPort > 0 {
 		// debug url
