@@ -1,1 +1,2 @@
-# go
+# getmetric-go
+Getmetric Golang library
