@@ -1,4 +1,4 @@
-module github.com/getmetric/go/v0
+module github.com/getmetric/go
 
 go 1.14
 
