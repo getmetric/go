@@ -1,4 +1,4 @@
-module herus
+module getmetric
 
 go 1.14
 
