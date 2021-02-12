@@ -95,3 +95,52 @@ func TestPerSec(t *testing.T) {
 	assert.True(t, mon.GetSentCount() > 0, "sent count check")
 	// mon.GetLastError()
 }
+
+func TestOperation(t *testing.T) {
+	mon, _ := NewMonitoring(1)
+	mon.sendPort = 9501 // debug
+
+	for x := 0; x < 1; x++ {
+		err := mon.PushOperation("DEBUG_28", 0, "debug_begin",
+			false, false, "start", nil)
+		if !assert.True(t, err == nil, "push operation begin") {
+			fmt.Println("ERROR: ", err)
+			return
+		}
+
+		err = mon.PushOperation("DEBUG_28", 0, "debug_end",
+			false, true, "finish", nil)
+		if !assert.True(t, err == nil, "push operation begin") {
+			fmt.Println("ERROR: ", err)
+			return
+		}
+	}
+
+	// wait for send
+	time.Sleep(time.Duration(5) * time.Second)
+
+	// check send status
+	assert.True(t, mon.GetSentCount() > 0, "sent count check")
+	// mon.GetLastError()
+}
+
+
+func TestLog(t *testing.T) {
+	mon, _ := NewMonitoring(1)
+	mon.sendPort = 9501 // debug
+
+	for x := 0; x < 1; x++ {
+		err := mon.PushLog("DEBUG_33", MonLogLevelAuto, "INFO: hello world", nil)
+		if !assert.True(t, err == nil, "push log") {
+			fmt.Println("ERROR: ", err)
+			return
+		}
+	}
+
+	// wait for send
+	time.Sleep(time.Duration(5) * time.Second)
+
+	// check send status
+	assert.True(t, mon.GetSentCount() > 0, "sent count check")
+	// mon.GetLastError()
+}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"sync"
@@ -18,6 +19,17 @@ func init() {
 	useFakeSend = false
 	isDebugRun = false
 }
+
+const(
+	MonLogLevelAuto = -1
+	MonLogLevelTrace = 0
+	MonLogLevelDebug = 1
+	MonLogLevelInfo = 2
+	MonLogLevelWarning = 3
+	MonLogLevelError = 4
+	MonLogLevelFatal = 5
+	MonLogLevelPanic = 6
+)
 
 type Monitoring struct {
 
@@ -295,7 +307,16 @@ func (mon *Monitoring) sendBatch(batchQueue []interface{}) error {
 		fmt.Println(string(body))
 	}
 
-	resp, err := http.Post(urlBatch, "application/json", bytes.NewBufferString(string(body)))
+	contentType := "application/json"
+	var reader io.Reader
+	if len(body) > 1024 * 64 {
+		// TODO: use snappy to compress data
+		// contentType = "application/octet-stream"
+	} else {
+		reader = bytes.NewBufferString(string(body))
+	}
+
+	resp, err := http.Post(urlBatch, contentType, reader)
 	if err != nil {
 		if isDebugRun {
 			fmt.Println("Failed to send batch. error:" + err.Error())
@@ -378,4 +399,98 @@ func (mon *Monitoring) pushPerSecMeasureToQueue(item monItemV1) error {
 	}
 
 	return nil
+}
+
+func (mon *Monitoring) PushOperation(code string, group int, stage string, isError bool, isEnd bool,
+	message string, data map[string]interface{}) error {
+
+	if !mon.running {
+		return fmt.Errorf("not running")
+	}
+
+	if len(code) < 1 {
+		// just ignore (monitoring item is not set up)
+		return nil
+	}
+
+	if len(message) > 0 {
+		if data == nil {
+			data = make(map[string]interface{}, 0)
+		}
+		data["_message"] = message
+	}
+
+	dataJson := ""
+	if data != nil && len(data) > 0 {
+		dataJsonBt, err := json.Marshal(data)
+		if err == nil {
+			dataJson = string(dataJsonBt)
+		}
+	}
+
+	isErrorStr := "false"
+	if isError {
+		isErrorStr = "true"
+	}
+
+	isEndStr := "false"
+	if isEnd {
+		isEndStr = "true"
+	}
+
+	return mon.pushMeasureToQueue(monItemV1{
+		Type: 2,
+		Code: code,
+		Time: time.Now().UTC(),
+		Values: []MonValue{{
+			Name:  "group",
+			Value: group,
+		}, {
+			Name:  "stage",
+			Value: stage,
+		}, {
+			Name:  "error",
+			Value: isErrorStr,
+		}, {
+			Name:  "end",
+			Value: isEndStr,
+		}, {
+			Name:  "message",
+			Value: dataJson,
+		}}})
+}
+
+func (mon *Monitoring) PushLog(code string, level int, message string, data map[string]interface{}) error {
+
+	if !mon.running {
+		return fmt.Errorf("not running")
+	}
+
+	if len(code) < 1 {
+		// just ignore (monitoring item is not set up)
+		return nil
+	}
+
+	dataJson := ""
+	if data != nil && len(data) > 0 {
+		dataJsonBt, err := json.Marshal(data)
+		if err == nil {
+			dataJson = string(dataJsonBt)
+		}
+	}
+
+	return mon.pushMeasureToQueue(monItemV1{
+		Type: 3,
+		Code: code,
+		Time: time.Now().UTC(),
+		Values: []MonValue{{
+			Name:  "level",
+			Value: level,
+		}, {
+			Name:  "message",
+			Value: message,
+		}, {
+			Name:  "data",
+			Value: dataJson,
+		}}})
 }
