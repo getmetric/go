@@ -291,7 +291,7 @@ func (mon *Monitoring) sendBatch(batchQueue []interface{}) error {
 		}
 	}
 
-	urlBatch := "https://node.getmetric.co/api1/batch"
+	urlBatch := "https://node.getmetric.net/api1/batch"
 
 	if mon.sendPort > 0 {
 		// debug url
