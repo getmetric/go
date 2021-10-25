@@ -20,17 +20,6 @@ func init() {
 	isDebugRun = false
 }
 
-const(
-	MonLogLevelAuto = -1
-	MonLogLevelTrace = 0
-	MonLogLevelDebug = 1
-	MonLogLevelInfo = 2
-	MonLogLevelWarning = 3
-	MonLogLevelError = 4
-	MonLogLevelFatal = 5
-	MonLogLevelPanic = 6
-)
-
 type Monitoring struct {
 
 	running       bool // TODO: atomic
@@ -53,7 +42,7 @@ type MonValue struct {
 }
 
 type monItemV1 struct {
-	Type   int        `json:"type"` // 1 - measure, 2 - operation, 3 - log, 4 - alert
+	Type   int        `json:"type"` // 1 - measure, 2 - operation
 	Code   string     `json:"code"`
 	Time   time.Time  `json:"time"`
 	Values []MonValue `json:"values"`
@@ -196,8 +185,6 @@ func checkValue(name string, v interface{}) error {
 		return nil
 	case float64:
 		return nil
-	case string:
-		return nil
 	}
 
 	if len(name) < 1 {
@@ -241,6 +228,8 @@ func (mon *Monitoring) senderRoutine() {
 			time.Sleep(time.Duration(mon.sendPeriodSec) * time.Second)
 			dontSleep = false
 		}
+
+		mon.checkAndDumpPerSec()
 
 		if len(batchQueue) < 1 {
 			mon.queueMutex.RLock()
@@ -341,6 +330,30 @@ func (mon *Monitoring) sendBatch(batchQueue []interface{}) error {
 
 func (mon *Monitoring) GetSentCount() int {
 	return mon.sentCount
+}
+
+func (mon *Monitoring) checkAndDumpPerSec() {
+	mon.perSecQueueMutex.Lock()
+	defer mon.perSecQueueMutex.Unlock()
+
+	now := time.Now().UTC()
+
+	var remove []string
+	for k, existing := range mon.perSecMap {
+		diffSec := int(now.Sub(existing.Time).Seconds())
+		if diffSec > 0 {
+			if isDebugRun {
+				fmt.Println("checkAndDumpPerSec diff sec", diffSec)
+			}
+			// send to queue
+			_ = mon.pushMeasureToQueue(existing)
+			remove = append(remove, k)
+		}
+	}
+
+	for _, k := range remove {
+		delete(mon.perSecMap, k)
+	}
 }
 
 func (mon *Monitoring) pushPerSecMeasureToQueue(item monItemV1) error {
@@ -460,37 +473,3 @@ func (mon *Monitoring) PushOperation(code string, group int, stage string, isErr
 		}}})
 }
 
-func (mon *Monitoring) PushLog(code string, level int, message string, data map[string]interface{}) error {
-
-	if !mon.running {
-		return fmt.Errorf("not running")
-	}
-
-	if len(code) < 1 {
-		// just ignore (monitoring item is not set up)
-		return nil
-	}
-
-	dataJson := ""
-	if data != nil && len(data) > 0 {
-		dataJsonBt, err := json.Marshal(data)
-		if err == nil {
-			dataJson = string(dataJsonBt)
-		}
-	}
-
-	return mon.pushMeasureToQueue(monItemV1{
-		Type: 3,
-		Code: code,
-		Time: time.Now().UTC(),
-		Values: []MonValue{{
-			Name:  "level",
-			Value: level,
-		}, {
-			Name:  "message",
-			Value: message,
-		}, {
-			Name:  "data",
-			Value: dataJson,
-		}}})
-}

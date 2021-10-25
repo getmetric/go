@@ -10,12 +10,12 @@ import (
 
 func init() {
 	isDebugRun = true
-	// useFakeSend = true
+	useFakeSend = true // false to use local server for testing
 }
 
 func TestQueue(t *testing.T) {
 	mon, _ := NewMonitoring(1)
-	mon.sendPort = 9501 // debug
+	mon.sendPort = 9501 // local server debug
 
 	for x := 0; x < 10; x++ {
 		err := mon.PushMeasure("DEBUG_1", x)
@@ -33,10 +33,18 @@ func TestQueue(t *testing.T) {
 	// mon.GetLastError()
 }
 
+func TestPerSecDump(t *testing.T) {
+	mon, _ := NewMonitoring(1)
+	mon.sendPort = 9501 // local server debug
+	_ = mon.PushPerSecondMeasures("DEBUG_7", MonValue{Name: "test_int", Value: 1})
+	time.Sleep(time.Duration(2) * time.Second)
+	assert.True(t, mon.GetSentCount() > 0, "sent count check")
+}
+
 func TestPerSec(t *testing.T) {
 
 	mon, _ := NewMonitoring(5)
-	// mon.sendPort = 9500 // debug
+	mon.sendPort = 9501 // local server debug
 
 	// first run
 	for x := 0; x < 1000; x++ {
@@ -98,7 +106,7 @@ func TestPerSec(t *testing.T) {
 
 func TestOperation(t *testing.T) {
 	mon, _ := NewMonitoring(1)
-	mon.sendPort = 9501 // debug
+	mon.sendPort = 9501 // local server debug
 
 	for x := 0; x < 1; x++ {
 		err := mon.PushOperation("DEBUG_28", 0, "debug_begin",
@@ -125,22 +133,3 @@ func TestOperation(t *testing.T) {
 }
 
 
-func TestLog(t *testing.T) {
-	mon, _ := NewMonitoring(1)
-	mon.sendPort = 9501 // debug
-
-	for x := 0; x < 1; x++ {
-		err := mon.PushLog("DEBUG_33", MonLogLevelAuto, "INFO: hello world", nil)
-		if !assert.True(t, err == nil, "push log") {
-			fmt.Println("ERROR: ", err)
-			return
-		}
-	}
-
-	// wait for send
-	time.Sleep(time.Duration(5) * time.Second)
-
-	// check send status
-	assert.True(t, mon.GetSentCount() > 0, "sent count check")
-	// mon.GetLastError()
-}
