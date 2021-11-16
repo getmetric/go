@@ -414,7 +414,15 @@ func (mon *Monitoring) pushPerSecMeasureToQueue(item monItemV1) error {
 	return nil
 }
 
-func (mon *Monitoring) PushOperation(code string, group int, stage string, isError bool, isEnd bool,
+// PushOperation writes operation
+// stage is one of three string values:
+//   "begin" - operation start
+//   "mid" - something in the middle of operation, for ex. you want additional log in between
+//   "end" - operation finish
+// you can use message as log string for stage,
+// if you want break/finish operation with error use isError param
+// use data param to bind some additional information to the stage
+func (mon *Monitoring) PushOperation(code string, stage string, isError bool,
 	message string, data map[string]interface{}) error {
 
 	if !mon.running {
@@ -446,27 +454,16 @@ func (mon *Monitoring) PushOperation(code string, group int, stage string, isErr
 		isErrorStr = "true"
 	}
 
-	isEndStr := "false"
-	if isEnd {
-		isEndStr = "true"
-	}
-
 	return mon.pushMeasureToQueue(monItemV1{
 		Type: 2,
 		Code: code,
 		Time: time.Now().UTC(),
 		Values: []MonValue{{
-			Name:  "group",
-			Value: group,
-		}, {
 			Name:  "stage",
 			Value: stage,
 		}, {
 			Name:  "error",
 			Value: isErrorStr,
-		}, {
-			Name:  "end",
-			Value: isEndStr,
 		}, {
 			Name:  "message",
 			Value: dataJson,

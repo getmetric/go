@@ -105,20 +105,20 @@ func TestPerSec(t *testing.T) {
 }
 
 func TestOperation(t *testing.T) {
-	mon, _ := NewMonitoring(1)
+	mon, _ := NewMonitoring(2)
 	mon.sendPort = 9501 // local server debug
 
 	for x := 0; x < 1; x++ {
-		err := mon.PushOperation("DEBUG_28", 0, "debug_begin",
-			false, false, "start", nil)
+		err := mon.PushOperation("DEBUG_28", "begin", false, "start", nil)
 		if !assert.True(t, err == nil, "push operation begin") {
 			fmt.Println("ERROR: ", err)
 			return
 		}
 
-		err = mon.PushOperation("DEBUG_28", 0, "debug_end",
-			false, true, "finish", nil)
-		if !assert.True(t, err == nil, "push operation begin") {
+		time.Sleep(time.Duration(1) * time.Second)
+
+		err = mon.PushOperation("DEBUG_28", "end", false, "finish", nil)
+		if !assert.True(t, err == nil, "push operation end") {
 			fmt.Println("ERROR: ", err)
 			return
 		}
